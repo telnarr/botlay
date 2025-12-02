@@ -30,42 +30,41 @@ model = genai.GenerativeModel('gemini-2.5-flash-preview-09-2025')
 
 # --- PYTHON ÖĞRENİYORUM SERİSİ KONULARI ---
 PYTHON_TOPICS = [
-    "wariabla baha bermek we şertli funksiýalarda ulanmak",
-    "Python näme?",
-    "Näme üçin Python dilini saýlamaly? ",
-    "Programmirleme dili näme zat?",
-    "Näme üçin programmirleme öwrenmeli?",
-    "Python ýüklemek",
-    "Pythona giriş",
-    "Python IDLE",
-    "CMD näme zat?"
-    "cmd-de iň köp ulanylýan komandalar",
-    "cmd-de dir komandasy",
-    "cmd-de cd komandasy",
-    "cmd-de md komandasy",
-    "cmd-de rd komandasy",
-    "cmd-de del komandasy",
-    "Python kody işletmek",
-    "Pythonda esasy type lar",
-    "Integer",
-    "String",
-    "Float",
-    "Ilkinji programma",
-    "Print kody",
-    "Goşmak operatory +",
-    "Aýyrmak operatory -",
-    "Köpeltmek operatory *",
-    "Bölmek operatory /",
-    "Div we Mod",
-    "input() funksiýasy",
-    "input() funksiýasynda aňsat mysallar",
-    "Şertli funksiýalary (if, elif, else)",
-    "If, elif, else barada",
-    "input, if we print ulanyp mysallar çözmek",
-    "wariabla baha bermek we şertli funksiýalarda ulanmak",
-    "Deňeşdirme funksiýalary",
-    "Gaýtalanma funksiýalary nämä gerek ? (for, while)",
-    "Gaýtalanmaň görnüşleri (for, while)",
+    "Bölüm 1 - Python näme?",
+    "Bölüm 2 - Näme üçin Python dilini saýlamaly? ",
+    "Bölüm 3 - Programmirleme dili näme zat?",
+    "Bölüm 4 - Näme üçin programmirleme öwrenmeli?",
+    "Bölüm 5 - Python ýüklemek",
+    "Bölüm 6 - Pythona giriş",
+    "Bölüm 7 - Python IDLE",
+    "Bölüm 8 - CMD näme zat?"
+    "Bölüm 9 - cmd-de iň köp ulanylýan komandalar",
+    "Bölüm 10 - cmd-de dir komandasy",
+    "Bölüm 11 - cmd-de cd komandasy",
+    "Bölüm 12 - cmd-de md komandasy",
+    "Bölüm 13 - cmd-de rd komandasy",
+    "Bölüm 14 - cmd-de del komandasy",
+    "Bölüm 15 - Python kody işletmek",
+    "Bölüm 16 - Pythonda esasy type lar",
+    "Bölüm 17 - Integer",
+    "Bölüm 18 - String",
+    "Bölüm 19 - Float",
+    "Bölüm 20 - Ilkinji programma",
+    "Bölüm 21 - Print kody",
+    "Bölüm 22 - Goşmak operatory +",
+    "Bölüm 23 - Aýyrmak operatory -",
+    "Bölüm 24 - Köpeltmek operatory *",
+    "Bölüm 25 - Bölmek operatory /",
+    "Bölüm 26 - Div we Mod",
+    "Bölüm 27 - input() funksiýasy",
+    "Bölüm 28 - input() funksiýasynda aňsat mysallar",
+    "Bölüm 29 - Şertli funksiýalary (if, elif, else)",
+    "Bölüm 30 - If, elif, else barada",
+    "Bölüm 31 - input, if we print ulanyp mysallar çözmek",
+    "Bölüm 32 - wariabla baha bermek we şertli funksiýalarda ulanmak",
+    "Bölüm 33 - Deňeşdirme funksiýalary",
+    "Bölüm 34 - Gaýtalanma funksiýalary nämä gerek ? (for, while)",
+    "Bölüm 35 - Gaýtalanmaň görnüşleri (for, while)",
     
 ]
 
@@ -365,7 +364,7 @@ def main():
     job_queue.run_daily(task_publish_post, time=time(9, 0, tzinfo=TZ), data={'type': 'morning'})
 
     # Öğle: 12:00 Hazırla -> 13:00 Paylaş (Python Serisi)
-    job_queue.run_daily(task_prepare_draft, time=time(21, 21, tzinfo=TZ), data={'type': 'noon'})
+    job_queue.run_daily(task_prepare_draft, time=time(12, 0, tzinfo=TZ), data={'type': 'noon'})
     job_queue.run_daily(task_publish_post, time=time(13, 0, tzinfo=TZ), data={'type': 'noon'})
 
     # Akşam: 17:00 Hazırla -> 18:00 Paylaş (Alıştırma)
