@@ -3,12 +3,11 @@ import logging
 import asyncio
 import json
 import psycopg2
-from datetime import datetime
+from datetime import datetime, time
 from pytz import timezone
 import google.generativeai as genai
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Poll
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # --- KONFİGÜRASYON ---
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -27,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 # --- GEMINI AI KURULUMU ---
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-2.5-flash-preview-09-2025') # Güncel model
+model = genai.GenerativeModel('gemini-2.5-flash-preview-09-2025')
 
 # --- PYTHON ÖĞRENİYORUM SERİSİ KONULARI ---
 PYTHON_TOPICS = [
@@ -47,7 +46,6 @@ PYTHON_TOPICS = [
     "Hata dolandyryşy (Try, Except)",
     "Faýl amallary (Okamak we ýazmak)",
     "Klaslar we Obyektler (OOP Giriş)",
-    # Buraya daha fazla konu ekleyebilirsin
 ]
 
 # --- VERİTABANI İŞLEMLERİ ---
@@ -58,22 +56,21 @@ def init_db():
     """Tabloları oluşturur"""
     conn = get_db_connection()
     cur = conn.cursor()
-    # Ayarlar tablosu (Python serisi takibi için)
+    # Ayarlar tablosu
     cur.execute("""
         CREATE TABLE IF NOT EXISTS settings (
             key VARCHAR(50) PRIMARY KEY,
             value INTEGER
         );
     """)
-    # Varsayılan başlangıç değerini ata
     cur.execute("INSERT INTO settings (key, value) VALUES ('python_topic_index', 0) ON CONFLICT DO NOTHING;")
     
-    # Bekleyen postlar tablosu (Draftlar)
+    # Bekleyen postlar tablosu
     cur.execute("""
         CREATE TABLE IF NOT EXISTS pending_posts (
-            type VARCHAR(20) PRIMARY KEY, -- 'morning', 'noon', 'evening', 'quiz'
+            type VARCHAR(20) PRIMARY KEY,
             content TEXT,
-            poll_data JSONB, -- Quiz için soru/cevap datası
+            poll_data JSONB,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
@@ -85,7 +82,8 @@ def get_topic_index():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("SELECT value FROM settings WHERE key = 'python_topic_index'")
-    idx = cur.fetchone()[0]
+    row = cur.fetchone()
+    idx = row[0] if row else 0
     cur.close()
     conn.close()
     return idx
@@ -168,10 +166,17 @@ async def generate_content_ai(post_type, topic=None):
     try:
         user_prompt = prompts[post_type]
         if post_type == "quiz":
-            response = model.generate_content(system_prompt + " " + user_prompt, generation_config={"response_mime_type": "application/json"})
+            response = await asyncio.to_thread(
+                model.generate_content,
+                system_prompt + " " + user_prompt,
+                generation_config={"response_mime_type": "application/json"}
+            )
             return json.loads(response.text)
         else:
-            response = model.generate_content(system_prompt + " " + user_prompt)
+            response = await asyncio.to_thread(
+                model.generate_content,
+                system_prompt + " " + user_prompt
+            )
             return response.text
     except Exception as e:
         logger.error(f"AI Error ({post_type}): {e}")
@@ -192,11 +197,9 @@ async def task_prepare_draft(context: ContextTypes.DEFAULT_TYPE):
     topic = None
     if post_type in ['noon', 'quiz']:
         idx = get_topic_index()
-        # Eğer konular bittiyse başa dön veya dur (burada başa dönüyoruz)
         safe_idx = idx % len(PYTHON_TOPICS)
         topic = PYTHON_TOPICS[safe_idx]
 
-    # AI'dan içerik al
     logger.info(f"Generating content for {post_type}...")
     ai_result = await generate_content_ai(post_type, topic)
     
@@ -204,41 +207,40 @@ async def task_prepare_draft(context: ContextTypes.DEFAULT_TYPE):
     poll_data = None
 
     if post_type == "quiz":
-        content = ai_result['explanation'] # Quiz açıklamasını içerik olarak saklayalım veya boş bırakalım
+        content = ai_result.get('explanation', '')
         poll_data = ai_result
     else:
         content = ai_result
     
-    # Veritabanına kaydet
     save_draft(post_type, content, poll_data)
 
-    # Admine önizleme gönder
     keyboard = [[InlineKeyboardButton("♻️ Üýtget (Regenerate)", callback_data=f"regen_{post_type}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     msg_prefix = f"📢 **YAYINA 1 SAAT VAR ({post_type.upper()})**\n\n"
     
-    if post_type == "quiz":
-        # Quiz önizlemesi
-        q = poll_data
-        await context.bot.send_message(chat_id=ADMIN_ID, text=f"{msg_prefix}Soru: {q['question']}\nCevaplar: {q['options']}\nDoğru: {q['options'][q['correct_option_id']]}")
-        await context.bot.send_poll(
-            chat_id=ADMIN_ID,
-            question=q['question'],
-            options=q['options'],
-            type=Poll.QUIZ,
-            correct_option_id=q['correct_option_id'],
-            is_anonymous=False,
-            reply_markup=reply_markup
-        )
-    else:
-        # Normal post önizlemesi
-        await context.bot.send_message(
-            chat_id=ADMIN_ID, 
-            text=msg_prefix + content, 
-            reply_markup=reply_markup,
-            parse_mode='Markdown'
-        )
+    try:
+        if post_type == "quiz":
+            q = poll_data
+            await context.bot.send_message(chat_id=ADMIN_ID, text=f"{msg_prefix}Soru: {q['question']}\nCevaplar: {q['options']}\nDoğru: {q['options'][q['correct_option_id']]}")
+            await context.bot.send_poll(
+                chat_id=ADMIN_ID,
+                question=q['question'],
+                options=q['options'],
+                type=Poll.QUIZ,
+                correct_option_id=q['correct_option_id'],
+                is_anonymous=False,
+                reply_markup=reply_markup
+            )
+        else:
+            await context.bot.send_message(
+                chat_id=ADMIN_ID, 
+                text=msg_prefix + content, 
+                reply_markup=reply_markup,
+                parse_mode='Markdown'
+            )
+    except Exception as e:
+        logger.error(f"Send admin preview failed: {e}")
 
 # 2. Kanalda Yayınlama Fonksiyonu
 async def task_publish_post(context: ContextTypes.DEFAULT_TYPE):
@@ -253,16 +255,15 @@ async def task_publish_post(context: ContextTypes.DEFAULT_TYPE):
 
     try:
         if post_type == "quiz":
-            poll_json = poll_data # Zaten jsonb olarak geliyor (psycopg2 dict döndürür)
+            poll_json = poll_data 
             await context.bot.send_poll(
                 chat_id=CHANNEL_ID,
                 question=poll_json['question'],
                 options=poll_json['options'],
                 type=Poll.QUIZ,
                 correct_option_id=poll_json['correct_option_id'],
-                is_anonymous=True # Kanalda anonim olsun
+                is_anonymous=True 
             )
-            # Quiz yayınlandıktan sonra konuyu ilerlet
             increment_topic_index()
         else:
             await context.bot.send_message(chat_id=CHANNEL_ID, text=content)
@@ -278,34 +279,30 @@ async def regenerate_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     await query.answer("Täzeden döredilýär...")
     
     data = query.data
-    post_type = data.split("_")[1] # regen_morning -> morning
+    post_type = data.split("_")[1]
 
     topic = None
     if post_type in ['noon', 'quiz']:
         idx = get_topic_index()
         topic = PYTHON_TOPICS[idx % len(PYTHON_TOPICS)]
 
-    # Yeni içerik üret
     ai_result = await generate_content_ai(post_type, topic)
     
     content = ""
     poll_data = None
     if post_type == "quiz":
-        content = ai_result['explanation']
+        content = ai_result.get('explanation', '')
         poll_data = ai_result
     else:
         content = ai_result
     
-    # DB Güncelle
     save_draft(post_type, content, poll_data)
 
-    # Mesajı Güncelle (Admin panelinde)
     keyboard = [[InlineKeyboardButton("♻️ Üýtget (Regenerate)", callback_data=f"regen_{post_type}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     try:
         if post_type == "quiz":
-            # Poll'lar düzenlenemez, o yüzden eskiyi silip yeni atıyoruz
             await query.message.delete()
             q = poll_data
             await context.bot.send_message(chat_id=ADMIN_ID, text=f"📢 **YENİLENDİ ({post_type.upper()})**\nSoru: {q['question']}\nDoğru: {q['options'][q['correct_option_id']]}")
@@ -334,32 +331,29 @@ def main():
 
     # Uygulamayı oluştur
     application = Application.builder().token(BOT_TOKEN).build()
+    job_queue = application.job_queue
     
     # Handlerlar
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(regenerate_callback, pattern="^regen_"))
 
-    # Scheduler (Zamanlayıcı)
-    scheduler = AsyncIOScheduler(timezone=TZ)
+    # --- ZAMANLAMA AYARLARI (PTB JobQueue Kullanılarak) ---
     
-    # --- ZAMANLAMA AYARLARI (SAATLER) ---
     # Sabah: 08:00 Hazırla -> 09:00 Paylaş
-    scheduler.add_job(task_prepare_draft, 'cron', hour=8, minute=0, data={'type': 'morning'})
-    scheduler.add_job(task_publish_post, 'cron', hour=9, minute=0, data={'type': 'morning'})
+    job_queue.run_daily(task_prepare_draft, time=time(8, 0, tzinfo=TZ), data={'type': 'morning'})
+    job_queue.run_daily(task_publish_post, time=time(9, 0, tzinfo=TZ), data={'type': 'morning'})
 
     # Öğle: 12:00 Hazırla -> 13:00 Paylaş (Python Serisi)
-    scheduler.add_job(task_prepare_draft, 'cron', hour=12, minute=0, data={'type': 'noon'})
-    scheduler.add_job(task_publish_post, 'cron', hour=13, minute=0, data={'type': 'noon'})
+    job_queue.run_daily(task_prepare_draft, time=time(12, 0, tzinfo=TZ), data={'type': 'noon'})
+    job_queue.run_daily(task_publish_post, time=time(13, 0, tzinfo=TZ), data={'type': 'noon'})
 
     # Akşam: 17:00 Hazırla -> 18:00 Paylaş (Alıştırma)
-    scheduler.add_job(task_prepare_draft, 'cron', hour=17, minute=0, data={'type': 'evening'})
-    scheduler.add_job(task_publish_post, 'cron', hour=18, minute=0, data={'type': 'evening'})
+    job_queue.run_daily(task_prepare_draft, time=time(17, 0, tzinfo=TZ), data={'type': 'evening'})
+    job_queue.run_daily(task_publish_post, time=time(18, 0, tzinfo=TZ), data={'type': 'evening'})
 
-    # Test: 18:00 Hazırla -> 19:00 Paylaş (Konuyla ilgili Quiz - Posttan 1 saat sonra)
-    scheduler.add_job(task_prepare_draft, 'cron', hour=18, minute=0, data={'type': 'quiz'})
-    scheduler.add_job(task_publish_post, 'cron', hour=19, minute=0, data={'type': 'quiz'})
-
-    scheduler.start()
+    # Test: 18:00 Hazırla -> 19:00 Paylaş (Quiz)
+    job_queue.run_daily(task_prepare_draft, time=time(18, 0, tzinfo=TZ), data={'type': 'quiz'})
+    job_queue.run_daily(task_publish_post, time=time(19, 0, tzinfo=TZ), data={'type': 'quiz'})
 
     # Botu çalıştır
     print("Bot çalışıyor...")
