@@ -30,22 +30,42 @@ model = genai.GenerativeModel('gemini-2.5-flash-preview-09-2025')
 
 # --- PYTHON ÖĞRENİYORUM SERİSİ KONULARI ---
 PYTHON_TOPICS = [
-    "Python näme? Giriş we gurnamak",
-    "Ilkinji kodyň: Hello World we print()",
-    "Üýtgeýänler (Variables) we maglumat görnüşleri (Data Types)",
-    "Sanlar (Numbers) we matematiki amallar",
-    "Setirler (Strings) we olar bilen işlemek",
-    "Listler (Lists) - Giriş",
-    "Dictionary (Sözlükler) we Tuples",
-    "Şertli operatorlar: If, Elif, Else",
-    "For Loop (Gaýtalanýan amallar)",
-    "While Loop",
-    "Funksiýalar (Functions) - Giriş",
-    "Funksiýalarda parametrler we return",
-    "Modullar we kitaphanalar (Modules)",
-    "Hata dolandyryşy (Try, Except)",
-    "Faýl amallary (Okamak we ýazmak)",
-    "Klaslar we Obyektler (OOP Giriş)",
+    "Python näme?",
+    "Näme üçin Python dilini saýlamaly? ",
+    "Programmirleme dili näme zat?",
+    "Näme üçin programmirleme öwrenmeli?",
+    "Python ýüklemek",
+    "Pythona giriş",
+    "Python IDLE",
+    "CMD näme zat?"
+    "cmd-de iň köp ulanylýan komandalar",
+    "cmd-de dir komandasy",
+    "cmd-de cd komandasy",
+    "cmd-de md komandasy",
+    "cmd-de rd komandasy",
+    "cmd-de del komandasy",
+    "Python kody işletmek",
+    "Pythonda esasy type lar",
+    "Integer",
+    "String",
+    "Float",
+    "Ilkinji programma",
+    "Print kody",
+    "Goşmak operatory +",
+    "Aýyrmak operatory -",
+    "Köpeltmek operatory *",
+    "Bölmek operatory /",
+    "Div we Mod",
+    "input() funksiýasy",
+    "input() funksiýasynda aňsat mysallar",
+    "Şertli funksiýalary (if, elif, else)",
+    "If, elif, else barada",
+    "input, if we print ulanyp mysallar çözmek",
+    "wariabla baha bermek we şertli funksiýalarda ulanmak",
+    "Deňeşdirme funksiýalary",
+    "Gaýtalanma funksiýalary nämä gerek ? (for, while)",
+    "Gaýtalanmaň görnüşleri (for, while)",
+    
 ]
 
 # --- VERİTABANI İŞLEMLERİ ---
@@ -344,7 +364,7 @@ def main():
     job_queue.run_daily(task_publish_post, time=time(9, 0, tzinfo=TZ), data={'type': 'morning'})
 
     # Öğle: 12:00 Hazırla -> 13:00 Paylaş (Python Serisi)
-    job_queue.run_daily(task_prepare_draft, time=time(12, 0, tzinfo=TZ), data={'type': 'noon'})
+    job_queue.run_daily(task_prepare_draft, time=time(21, 14, tzinfo=TZ), data={'type': 'noon'})
     job_queue.run_daily(task_publish_post, time=time(13, 0, tzinfo=TZ), data={'type': 'noon'})
 
     # Akşam: 17:00 Hazırla -> 18:00 Paylaş (Alıştırma)
