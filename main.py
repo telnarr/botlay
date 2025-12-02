@@ -30,6 +30,7 @@ model = genai.GenerativeModel('gemini-2.5-flash-preview-09-2025')
 
 # --- PYTHON ÖĞRENİYORUM SERİSİ KONULARI ---
 PYTHON_TOPICS = [
+    "wariabla baha bermek we şertli funksiýalarda ulanmak",
     "Python näme?",
     "Näme üçin Python dilini saýlamaly? ",
     "Programmirleme dili näme zat?",
@@ -143,24 +144,24 @@ def get_draft(post_type):
 async def generate_content_ai(post_type, topic=None):
     """Gemini API kullanarak içerik üretir"""
     
-    system_prompt = "Sen Türkmen dilinde ýazılım we tehnologiýa barada bilermen kömekçi. Ähli jogaplaryňy Türkmen dilinde (Latyn elipbiýinde) bermeli."
+    system_prompt = "Sen Türkmen dilinde programmirleme we tehnologiýa barada bilermen kömekçi. Ähli jogaplaryňy Türkmen dilinde (Latyn elipbiýinde) bermeli."
     
     prompts = {
         "morning": """
-            Ertiriň haýyrly bolsun! Programmirleme, yazılım ýa-da tehnologiýa barada gysga, eglenceli, bilesigeliji (curiosity) fakt ýa-da peýdaly maslahat (tip) ýaz. 
+            Ertiriň haýyrly bolsun! Programmirleme, yazılım ýa-da tehnologiýa barada gysga, gyzykly, bilesigeliji (curiosity) fakt ýa-da peýdaly maslahat (tip) ýaz. 
             Tekst gysga we özüne çekiji bolsun. 
             Emojileri köp ulan. 
             Soňunda 2-3 sany degişli hashtag goş.
         """,
         "noon": f"""
-            "Sıfırdan Python Öwrenýäris" seriýasy üçin post taýýarla.
-            Bu günki mowzuk: "{topic}".
+            "Başyndan Python Öwrenýäris" seriýasy üçin gaty uzyn bolmadyk post taýýarla.
+            Bu günki tema: "{topic}".
             
             Şu formatda bolmaly:
-            1. Mowzugy düşnükli we sada dilde düşündir.
+            1. Temany düşnükli we sada dilde düşündir.
             2. Hökmany suratda kiçijik kod mysalyny (code snippet) goş.
             3. Emojiler bilen bezeg ber.
-            4. Soňunda #python #tutorial #turkmenistan hashtaglerini ulan.
+            4. Soňunda #python #tutorial #turkmenistan ýaly hashtagler ulan.
         """,
         "evening": """
             Agşamyňyz haýyrly bolsun! Programmirleme bilen baglanyşykly kiçijik bir "Challenge" ýa-da "Alıştırma" (Practice) ýaz.
@@ -364,7 +365,7 @@ def main():
     job_queue.run_daily(task_publish_post, time=time(9, 0, tzinfo=TZ), data={'type': 'morning'})
 
     # Öğle: 12:00 Hazırla -> 13:00 Paylaş (Python Serisi)
-    job_queue.run_daily(task_prepare_draft, time=time(21, 14, tzinfo=TZ), data={'type': 'noon'})
+    job_queue.run_daily(task_prepare_draft, time=time(21, 21, tzinfo=TZ), data={'type': 'noon'})
     job_queue.run_daily(task_publish_post, time=time(13, 0, tzinfo=TZ), data={'type': 'noon'})
 
     # Akşam: 17:00 Hazırla -> 18:00 Paylaş (Alıştırma)
