@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 # --- GEMINI AI KURULUMU ---
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-2.0-flash-exp')
+model = genai.GenerativeModel('gemini-2.0-flash')
 
 # --- PYTHON ÖĞRENİYORUM SERİSİ KONULARI ---
 PYTHON_TOPICS = [
