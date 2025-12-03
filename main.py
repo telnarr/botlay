@@ -8,6 +8,7 @@ from pytz import timezone
 import google.generativeai as genai
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Poll
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+import urllib.parse
 
 # --- KONFİGÜRASYON ---
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -15,7 +16,7 @@ ADMIN_ID = int(os.getenv("ADMIN_ID"))
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
-TZ = timezone('Asia/Ashgabat')  # Türkmenistan Saati
+TZ = timezone('Asia/Ashgabat')
 
 # --- LOGGING ---
 logging.basicConfig(
@@ -26,19 +27,19 @@ logger = logging.getLogger(__name__)
 
 # --- GEMINI AI KURULUMU ---
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-2.5-flash-preview-09-2025')
+model = genai.GenerativeModel('gemini-2.0-flash-exp')
 
 # --- PYTHON ÖĞRENİYORUM SERİSİ KONULARI ---
 PYTHON_TOPICS = [
     "Bölüm 1 - Python näme?",
-    "Bölüm 2 - Näme üçin Python dilini saýlamaly? ",
+    "Bölüm 2 - Näme üçin Python dilini saýlamaly?",
     "Bölüm 3 - Programmirleme dili näme zat?",
     "Bölüm 4 - Näme üçin programmirleme öwrenmeli?",
     "Bölüm 5 - Python ýüklemek",
     "Bölüm 6 - Pythona giriş",
     "Bölüm 7 - Python IDLE",
-    "Bölüm 8 - CMD näme zat?"
-    "Bölüm 9 - cmd-de iň köp ulanylýan komandalar",
+    "Bölüm 8 - CMD näme zat?",
+    "Bölüm 9 - cmd-de iş köp ulanylan komandalar",
     "Bölüm 10 - cmd-de dir komandasy",
     "Bölüm 11 - cmd-de cd komandasy",
     "Bölüm 12 - cmd-de md komandasy",
@@ -57,15 +58,14 @@ PYTHON_TOPICS = [
     "Bölüm 25 - Bölmek operatory /",
     "Bölüm 26 - Div we Mod",
     "Bölüm 27 - input() funksiýasy",
-    "Bölüm 28 - input() funksiýasynda aňsat mysallar",
+    "Bölüm 28 - input() funksiýasynda añsat mysallar",
     "Bölüm 29 - Şertli funksiýalary (if, elif, else)",
     "Bölüm 30 - If, elif, else barada",
     "Bölüm 31 - input, if we print ulanyp mysallar çözmek",
     "Bölüm 32 - wariabla baha bermek we şertli funksiýalarda ulanmak",
-    "Bölüm 33 - Deňeşdirme funksiýalary",
-    "Bölüm 34 - Gaýtalanma funksiýalary nämä gerek ? (for, while)",
-    "Bölüm 35 - Gaýtalanmaň görnüşleri (for, while)",
-    
+    "Bölüm 33 - Deñeşdirme funksiýalary",
+    "Bölüm 34 - Gaýtalanma funksiýalary näme gerek? (for, while)",
+    "Bölüm 35 - Gaýtalanmañ görnüşleri (for, while)",
 ]
 
 # --- VERİTABANI İŞLEMLERİ ---
@@ -76,6 +76,7 @@ def init_db():
     """Tabloları oluşturur"""
     conn = get_db_connection()
     cur = conn.cursor()
+    
     # Ayarlar tablosu
     cur.execute("""
         CREATE TABLE IF NOT EXISTS settings (
@@ -90,10 +91,12 @@ def init_db():
         CREATE TABLE IF NOT EXISTS pending_posts (
             type VARCHAR(20) PRIMARY KEY,
             content TEXT,
-            poll_data JSONB,
+            poll_data TEXT,
+            image_url TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
+    
     conn.commit()
     cur.close()
     conn.close()
@@ -116,16 +119,16 @@ def increment_topic_index():
     cur.close()
     conn.close()
 
-def save_draft(post_type, content, poll_data=None):
+def save_draft(post_type, content, poll_data=None, image_url=None):
     conn = get_db_connection()
     cur = conn.cursor()
     poll_json = json.dumps(poll_data) if poll_data else None
     cur.execute("""
-        INSERT INTO pending_posts (type, content, poll_data) 
-        VALUES (%s, %s, %s)
+        INSERT INTO pending_posts (type, content, poll_data, image_url) 
+        VALUES (%s, %s, %s, %s)
         ON CONFLICT (type) 
-        DO UPDATE SET content = EXCLUDED.content, poll_data = EXCLUDED.poll_data;
-    """, (post_type, content, poll_json))
+        DO UPDATE SET content = EXCLUDED.content, poll_data = EXCLUDED.poll_data, image_url = EXCLUDED.image_url;
+    """, (post_type, content, poll_json, image_url))
     conn.commit()
     cur.close()
     conn.close()
@@ -133,87 +136,147 @@ def save_draft(post_type, content, poll_data=None):
 def get_draft(post_type):
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT content, poll_data FROM pending_posts WHERE type = %s", (post_type,))
+    cur.execute("SELECT content, poll_data, image_url FROM pending_posts WHERE type = %s", (post_type,))
     res = cur.fetchone()
     cur.close()
     conn.close()
-    return res
+    if res:
+        content, poll_json, image_url = res
+        poll_data = json.loads(poll_json) if poll_json else None
+        return (content, poll_data, image_url)
+    return None
+
+def generate_image_url(keywords):
+    """Pollinations AI ile görsel URL'i oluşturur"""
+    prompt = urllib.parse.quote(keywords)
+    return f"https://image.pollinations.ai/prompt/{prompt}"
 
 # --- GEMINI İÇERİK ÜRETİMİ ---
 async def generate_content_ai(post_type, topic=None):
     """Gemini API kullanarak içerik üretir"""
     
-    system_prompt = "Sen Türkmen dilinde programmirleme we tehnologiýa barada bilermen kömekçi. Ähli jogaplaryňy Türkmen dilinde (Latyn elipbiýinde) bermeli."
+    system_prompt = """Sen Türkmen dilinde programmirleme we tehnologiýa barada bilermen kömeçi. 
+    MÖHÜM: Jogaplaryñ diňe içerigiñ özi bolmaly. "Bolýar", "Tamam", "Ine" ýaly sözler bilen başlama. 
+    Diňe post içerigini ber, başga hiç zat goşma."""
     
     prompts = {
         "morning": """
-            Ertiriň haýyrly bolsun! Programmirleme, yazılım ýa-da tehnologiýa barada gysga, gyzykly, bilesigeliji (curiosity) fakt ýa-da peýdaly maslahat (tip) ýaz. 
-            Tekst gysga we özüne çekiji bolsun. 
-            Emojileri köp ulan. 
-            Soňunda 2-3 sany degişli hashtag goş.
+            Programmirleme, ýazılım ýa-da tehnologiýa barada gyzykly fakt ýa-da peýdaly maslahat ýaz.
+            
+            Format:
+            - Gysgajyk başlyk (emoji bilen)
+            - 2-3 sany sada we gysgajyk tekst abzasy
+            - Emoji ulan
+            - Soňunda 3 sany hashtag (#python #programming #tech)
+            
+            MÖHÜM: Diňe post içerigini ýaz. "Bolýar", "Ine", "Tamam" ýaly girişme sözler gerek däl.
         """,
+        
         "noon": f"""
-            "Başyndan Python Öwrenýäris" seriýasy üçin gaty uzyn bolmadyk post taýýarla.
-            Bu günki tema: "{topic}".
+            "Başyndan Python Öwrenýäris" seriýasy üçin post taýýarla.
+            Bu günki tema: "{topic}"
             
-            Şu formatda bolmaly:
-            1. Temany düşnükli we sada dilde düşündir.
-            2. Hökmany suratda kiçijik kod mysalyny (code snippet) goş.
-            3. Emojiler bilen bezeg ber.
-            4. Soňunda #python #tutorial #turkmenistan ýaly hashtagler ulan.
+            Format:
+            - Gyzykly başlyk (emoji bilen)
+            - Temany sada we düşnükli düşündir (3-4 abzas)
+            - Kiçijik kod mysaly goş (```python ... ```)
+            - Emoji bilen bezeg ber
+            - Soňunda #python #tutorial #turkmenistan hashtagler
+            
+            MÖHÜM: Diňe post içerigini ýaz. Başga söz goşma.
         """,
+        
         "evening": """
-            Agşamyňyz haýyrly bolsun! Programmirleme bilen baglanyşykly kiçijik bir "Challenge" ýa-da "Alıştırma" (Practice) ýaz.
-            Derejesi tötänleýin bolsun (Aňsat, Orta ýa-da Kyn).
-            Okyjylary teswirlerde (kommentariýalarda) jogap bermäge çagyr.
-            Emojiler ulan. Hashtag goş.
-        """,
-        "quiz": f"""
-            Bu günki öwrenilen Python mowzugy "{topic}" barada bir sany test soragyny taýýarla.
+            Programmirleme bilen baglanşykly kiçijik bir "Challenge" ýa-da "Alştyma" ýaz.
             
-            Muny diňe JSON formatynda bermeli. Başga hiç hili söz ýazma.
-            Format şeýle bolsun:
+            Format:
+            - Gyzykly başlyk (emoji bilen)
+            - Mesele ýa-da alştyrmany düşündir (2-3 abzas)
+            - Derejesini görkeziň (Añsat/Orta/Kyn)
+            - Okyjylary teswirlerde jogap bermäge çagyr
+            - Emoji ulan
+            - Hashtag goş
+            
+            MÖHÜM: Diňe post içerigini ýaz. Başga söz goşma.
+        """,
+        
+        "quiz": f"""
+            "{topic}" mowzugy barada bir test soragyni taýýarla.
+            
+            Diňe JSON formatynda ber. Başga hiç hili söz ýazma.
             {{
-                "question": "Soragyň teksti (Türkmençe)",
+                "question": "Soragyñ teksti (Türkmenče, gysga we açyk)",
                 "options": ["Jogap A", "Jogap B", "Jogap C", "Jogap D"],
                 "correct_option_id": 0,
-                "explanation": "Näme üçin dogrydygyny gysgaça düşündir."
+                "explanation": "Näme üçin dogrudygyny gysgaça düşündir (1-2 sany)"
             }}
-            (correct_option_id: 0 bolsa birinji jogap dogry, 1 bolsa ikinji, we ş.m.)
         """
     }
 
     try:
         user_prompt = prompts[post_type]
+        
         if post_type == "quiz":
             response = await asyncio.to_thread(
                 model.generate_content,
-                system_prompt + " " + user_prompt,
+                system_prompt + "\n\n" + user_prompt,
                 generation_config={"response_mime_type": "application/json"}
             )
             return json.loads(response.text)
         else:
             response = await asyncio.to_thread(
                 model.generate_content,
-                system_prompt + " " + user_prompt
+                system_prompt + "\n\n" + user_prompt
             )
             return response.text
     except Exception as e:
         logger.error(f"AI Error ({post_type}): {e}")
-        return "Bagyşlaň, AI bir säwlik goýberdi. Gaýtadan synanşyň."
+        return None
+
+async def generate_image_keywords(post_type, topic=None):
+    """Görsel için anahtar kelime üretir"""
+    prompts = {
+        "morning": "technology programming code",
+        "noon": f"python programming {topic.split('-')[1].strip() if topic else 'tutorial'}",
+        "evening": "coding challenge programming",
+        "quiz": "python quiz test question"
+    }
+    return prompts.get(post_type, "programming")
 
 # --- BOT HANDLERS & TASKS ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
-    await update.message.reply_text("Salam Admin! Bot işjeň. Gündelik tertip boýunça işlemäge taýýar.")
+    await update.message.reply_text("✅ Salam Admin! Bot işjeň.\n\nKomandalar:\n/create - Post döret")
 
-# 1. Draft Oluşturma ve Admine Gönderme Fonksiyonu
-async def task_prepare_draft(context: ContextTypes.DEFAULT_TYPE):
-    job_data = context.job.data
-    post_type = job_data['type']
+async def create_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin'in istediği zamanda post oluşturmasını sağlar"""
+    if update.effective_user.id != ADMIN_ID:
+        return
     
+    keyboard = [
+        [InlineKeyboardButton("🌅 Ertiriň Posta", callback_data="create_morning")],
+        [InlineKeyboardButton("📚 Öýle Python Dersi", callback_data="create_noon")],
+        [InlineKeyboardButton("💡 Agşam Challenge", callback_data="create_evening")],
+        [InlineKeyboardButton("❓ Test Soragu", callback_data="create_quiz")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("Haýsy post görnüşini döretmek isleýärsiňiz?", reply_markup=reply_markup)
+
+async def create_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Create butonlarını işler"""
+    query = update.callback_query
+    await query.answer()
+    
+    post_type = query.data.replace("create_", "")
+    await query.edit_message_text(f"⏳ {post_type.upper()} üçin içerik döredilýär...")
+    
+    # İçerik oluştur
+    await prepare_draft_content(context, post_type, query.message.chat_id)
+
+async def prepare_draft_content(context, post_type, chat_id):
+    """İçerik hazırlama fonksiyonu"""
     topic = None
     if post_type in ['noon', 'quiz']:
         idx = get_topic_index()
@@ -223,8 +286,17 @@ async def task_prepare_draft(context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Generating content for {post_type}...")
     ai_result = await generate_content_ai(post_type, topic)
     
+    if not ai_result:
+        await context.bot.send_message(chat_id=chat_id, text="❌ AI içerik üretemedi. Gaýtadan synanyşyň.")
+        return
+    
     content = ""
     poll_data = None
+    image_url = None
+
+    # Görsel oluştur
+    keywords = await generate_image_keywords(post_type, topic)
+    image_url = generate_image_url(keywords)
 
     if post_type == "quiz":
         content = ai_result.get('explanation', '')
@@ -232,19 +304,25 @@ async def task_prepare_draft(context: ContextTypes.DEFAULT_TYPE):
     else:
         content = ai_result
     
-    save_draft(post_type, content, poll_data)
+    save_draft(post_type, content, poll_data, image_url)
 
-    keyboard = [[InlineKeyboardButton("♻️ Üýtget (Regenerate)", callback_data=f"regen_{post_type}")]]
+    keyboard = [
+        [InlineKeyboardButton("✅ Kanala Ýaýynla", callback_data=f"publish_{post_type}")],
+        [InlineKeyboardButton("♻️ Üýtget", callback_data=f"regen_{post_type}")]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    msg_prefix = f"📢 **YAYINA 1 SAAT VAR ({post_type.upper()})**\n\n"
+    msg_prefix = f"📢 **{post_type.upper()} TASLAMA**\n\n"
     
     try:
         if post_type == "quiz":
             q = poll_data
-            await context.bot.send_message(chat_id=ADMIN_ID, text=f"{msg_prefix}Soru: {q['question']}\nCevaplar: {q['options']}\nDoğru: {q['options'][q['correct_option_id']]}")
+            await context.bot.send_message(
+                chat_id=chat_id, 
+                text=f"{msg_prefix}Soru: {q['question']}\n\nDoğru: {q['options'][q['correct_option_id']]}\n\nDüşündiriş: {q['explanation']}"
+            )
             await context.bot.send_poll(
-                chat_id=ADMIN_ID,
+                chat_id=chat_id,
                 question=q['question'],
                 options=q['options'],
                 type=Poll.QUIZ,
@@ -253,130 +331,166 @@ async def task_prepare_draft(context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=reply_markup
             )
         else:
-            await context.bot.send_message(
-                chat_id=ADMIN_ID, 
-                text=msg_prefix + content, 
+            await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=image_url,
+                caption=msg_prefix + content,
                 reply_markup=reply_markup,
                 parse_mode='Markdown'
             )
     except Exception as e:
-        logger.error(f"Send admin preview failed: {e}")
+        logger.error(f"Send preview failed: {e}")
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=msg_prefix + content,
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
 
-# 2. Kanalda Yayınlama Fonksiyonu
+# 1. Draft Oluşturma (Zamanlanmış)
+async def task_prepare_draft(context: ContextTypes.DEFAULT_TYPE):
+    post_type = context.job.data['type']
+    await prepare_draft_content(context, post_type, ADMIN_ID)
+
+# 2. Kanalda Yayınlama
 async def task_publish_post(context: ContextTypes.DEFAULT_TYPE):
     post_type = context.job.data['type']
     
     draft = get_draft(post_type)
     if not draft:
         logger.error(f"No draft found for {post_type}")
+        await context.bot.send_message(
+            chat_id=ADMIN_ID, 
+            text=f"⚠️ {post_type} üçin taslama tapylmady. /create ulanyp täzeden dörediň."
+        )
         return
 
-    content, poll_data = draft
+    content, poll_data, image_url = draft
 
     try:
         if post_type == "quiz":
-            poll_json = poll_data 
             await context.bot.send_poll(
                 chat_id=CHANNEL_ID,
-                question=poll_json['question'],
-                options=poll_json['options'],
+                question=poll_data['question'],
+                options=poll_data['options'],
                 type=Poll.QUIZ,
-                correct_option_id=poll_json['correct_option_id'],
-                is_anonymous=True 
+                correct_option_id=poll_data['correct_option_id'],
+                is_anonymous=True,
+                explanation=poll_data.get('explanation', '')
             )
             increment_topic_index()
         else:
-            await context.bot.send_message(chat_id=CHANNEL_ID, text=content)
+            if image_url:
+                await context.bot.send_photo(
+                    chat_id=CHANNEL_ID,
+                    photo=image_url,
+                    caption=content
+                )
+            else:
+                await context.bot.send_message(chat_id=CHANNEL_ID, text=content)
             
-        logger.info(f"Published {post_type}")
+            if post_type == "noon":
+                increment_topic_index()
+            
+        logger.info(f"✅ Published {post_type}")
+        await context.bot.send_message(chat_id=ADMIN_ID, text=f"✅ {post_type.upper()} kanala ýaýynlandy!")
+        
     except Exception as e:
         logger.error(f"Publish failed: {e}")
-        await context.bot.send_message(chat_id=ADMIN_ID, text=f"⚠️ Hata: {post_type} yayınlanamadı.\n{e}")
+        await context.bot.send_message(
+            chat_id=ADMIN_ID, 
+            text=f"⚠️ Hata: {post_type} ýaýynlanamady.\n{e}"
+        )
 
-# 3. Yeniden Oluşturma (Regenerate) Butonu
+# 3. Manuel Yayınlama Butonu
+async def publish_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer("Kanala ýaýynlanýar...")
+    
+    post_type = query.data.replace("publish_", "")
+    
+    draft = get_draft(post_type)
+    if not draft:
+        await query.edit_message_text("❌ Taslama tapylmady.")
+        return
+
+    content, poll_data, image_url = draft
+
+    try:
+        if post_type == "quiz":
+            await context.bot.send_poll(
+                chat_id=CHANNEL_ID,
+                question=poll_data['question'],
+                options=poll_data['options'],
+                type=Poll.QUIZ,
+                correct_option_id=poll_data['correct_option_id'],
+                is_anonymous=True,
+                explanation=poll_data.get('explanation', '')
+            )
+            increment_topic_index()
+        else:
+            if image_url:
+                await context.bot.send_photo(
+                    chat_id=CHANNEL_ID,
+                    photo=image_url,
+                    caption=content
+                )
+            else:
+                await context.bot.send_message(chat_id=CHANNEL_ID, text=content)
+            
+            if post_type == "noon":
+                increment_topic_index()
+        
+        await query.edit_message_text(f"✅ {post_type.upper()} kanala ýaýynlandy!")
+        
+    except Exception as e:
+        logger.error(f"Manual publish failed: {e}")
+        await query.edit_message_text(f"❌ Ýaýynlanyp bilmedi: {e}")
+
+# 4. Yeniden Oluşturma
 async def regenerate_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer("Täzeden döredilýär...")
     
-    data = query.data
-    post_type = data.split("_")[1]
-
-    topic = None
-    if post_type in ['noon', 'quiz']:
-        idx = get_topic_index()
-        topic = PYTHON_TOPICS[idx % len(PYTHON_TOPICS)]
-
-    ai_result = await generate_content_ai(post_type, topic)
+    post_type = query.data.replace("regen_", "")
     
-    content = ""
-    poll_data = None
-    if post_type == "quiz":
-        content = ai_result.get('explanation', '')
-        poll_data = ai_result
-    else:
-        content = ai_result
-    
-    save_draft(post_type, content, poll_data)
-
-    keyboard = [[InlineKeyboardButton("♻️ Üýtget (Regenerate)", callback_data=f"regen_{post_type}")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    try:
-        if post_type == "quiz":
-            await query.message.delete()
-            q = poll_data
-            await context.bot.send_message(chat_id=ADMIN_ID, text=f"📢 **YENİLENDİ ({post_type.upper()})**\nSoru: {q['question']}\nDoğru: {q['options'][q['correct_option_id']]}")
-            await context.bot.send_poll(
-                chat_id=ADMIN_ID,
-                question=q['question'],
-                options=q['options'],
-                type=Poll.QUIZ,
-                correct_option_id=q['correct_option_id'],
-                reply_markup=reply_markup
-            )
-        else:
-            await query.edit_message_text(
-                text=f"📢 **YENİLENDİ ({post_type.upper()})**\n\n{content}",
-                reply_markup=reply_markup,
-                parse_mode='Markdown'
-            )
-    except Exception as e:
-        logger.error(f"Edit message failed: {e}")
+    await query.edit_message_text(f"⏳ {post_type.upper()} täzeden döredilýär...")
+    await prepare_draft_content(context, post_type, query.message.chat_id)
 
 # --- MAIN SETUP ---
 
 def main():
-    # Veritabanını başlat
     init_db()
 
-    # Uygulamayı oluştur
     application = Application.builder().token(BOT_TOKEN).build()
     job_queue = application.job_queue
     
     # Handlerlar
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("create", create_command))
+    application.add_handler(CallbackQueryHandler(create_callback, pattern="^create_"))
     application.add_handler(CallbackQueryHandler(regenerate_callback, pattern="^regen_"))
+    application.add_handler(CallbackQueryHandler(publish_callback, pattern="^publish_"))
 
-    # --- ZAMANLAMA AYARLARI (PTB JobQueue Kullanılarak) ---
+    # --- ZAMANLAMA AYARLARI ---
     
     # Sabah: 08:00 Hazırla -> 09:00 Paylaş
-    job_queue.run_daily(task_prepare_draft, time=time(15, 28, tzinfo=TZ), data={'type': 'morning'})
-    job_queue.run_daily(task_publish_post, time=time(15, 30, tzinfo=TZ), data={'type': 'morning'})
+    job_queue.run_daily(task_prepare_draft, time=time(8, 0, tzinfo=TZ), data={'type': 'morning'})
+    job_queue.run_daily(task_publish_post, time=time(9, 0, tzinfo=TZ), data={'type': 'morning'})
 
     # Öğle: 12:00 Hazırla -> 13:00 Paylaş (Python Serisi)
-    job_queue.run_daily(task_prepare_draft, time=time(15, 28, tzinfo=TZ), data={'type': 'noon'})
-    job_queue.run_daily(task_publish_post, time=time(15, 30, tzinfo=TZ), data={'type': 'noon'})
+    job_queue.run_daily(task_prepare_draft, time=time(12, 0, tzinfo=TZ), data={'type': 'noon'})
+    job_queue.run_daily(task_publish_post, time=time(13, 0, tzinfo=TZ), data={'type': 'noon'})
 
-    # Akşam: 17:00 Hazırla -> 18:00 Paylaş (Alıştırma)
-    job_queue.run_daily(task_prepare_draft, time=time(15, 28, tzinfo=TZ), data={'type': 'evening'})
-    job_queue.run_daily(task_publish_post, time=time(15, 30, tzinfo=TZ), data={'type': 'evening'})
+    # Akşam: 17:00 Hazırla -> 18:00 Paylaş
+    job_queue.run_daily(task_prepare_draft, time=time(17, 0, tzinfo=TZ), data={'type': 'evening'})
+    job_queue.run_daily(task_publish_post, time=time(18, 0, tzinfo=TZ), data={'type': 'evening'})
 
-    # Test: 18:00 Hazırla -> 19:00 Paylaş (Quiz)
-    job_queue.run_daily(task_prepare_draft, time=time(15, 28, tzinfo=TZ), data={'type': 'quiz'})
-    job_queue.run_daily(task_publish_post, time=time(15, 30, tzinfo=TZ), data={'type': 'quiz'})
+    # Test: 20:00 Hazırla -> 21:00 Paylaş (Quiz)
+    job_queue.run_daily(task_prepare_draft, time=time(20, 0, tzinfo=TZ), data={'type': 'quiz'})
+    job_queue.run_daily(task_publish_post, time=time(21, 0, tzinfo=TZ), data={'type': 'quiz'})
 
-    # Botu çalıştır
-    print("Bot çalışıyor...")
+    print("✅ Bot çalışıyor...")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
