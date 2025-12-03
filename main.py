@@ -360,8 +360,8 @@ def main():
     # --- ZAMANLAMA AYARLARI (PTB JobQueue Kullanılarak) ---
     
     # Sabah: 08:00 Hazırla -> 09:00 Paylaş
-    job_queue.run_daily(task_prepare_draft, time=time(8, 0, tzinfo=TZ), data={'type': 'morning'})
-    job_queue.run_daily(task_publish_post, time=time(9, 0, tzinfo=TZ), data={'type': 'morning'})
+    job_queue.run_daily(task_prepare_draft, time=time(15, 24, tzinfo=TZ), data={'type': 'morning'})
+    job_queue.run_daily(task_publish_post, time=time(15, 25, tzinfo=TZ), data={'type': 'morning'})
 
     # Öğle: 12:00 Hazırla -> 13:00 Paylaş (Python Serisi)
     job_queue.run_daily(task_prepare_draft, time=time(12, 0, tzinfo=TZ), data={'type': 'noon'})
