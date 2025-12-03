@@ -360,20 +360,20 @@ def main():
     # --- ZAMANLAMA AYARLARI (PTB JobQueue Kullanılarak) ---
     
     # Sabah: 08:00 Hazırla -> 09:00 Paylaş
-    job_queue.run_daily(task_prepare_draft, time=time(15, 24, tzinfo=TZ), data={'type': 'morning'})
-    job_queue.run_daily(task_publish_post, time=time(15, 25, tzinfo=TZ), data={'type': 'morning'})
+    job_queue.run_daily(task_prepare_draft, time=time(15, 28, tzinfo=TZ), data={'type': 'morning'})
+    job_queue.run_daily(task_publish_post, time=time(15, 30, tzinfo=TZ), data={'type': 'morning'})
 
     # Öğle: 12:00 Hazırla -> 13:00 Paylaş (Python Serisi)
-    job_queue.run_daily(task_prepare_draft, time=time(12, 0, tzinfo=TZ), data={'type': 'noon'})
-    job_queue.run_daily(task_publish_post, time=time(13, 0, tzinfo=TZ), data={'type': 'noon'})
+    job_queue.run_daily(task_prepare_draft, time=time(15, 28, tzinfo=TZ), data={'type': 'noon'})
+    job_queue.run_daily(task_publish_post, time=time(15, 30, tzinfo=TZ), data={'type': 'noon'})
 
     # Akşam: 17:00 Hazırla -> 18:00 Paylaş (Alıştırma)
-    job_queue.run_daily(task_prepare_draft, time=time(17, 0, tzinfo=TZ), data={'type': 'evening'})
-    job_queue.run_daily(task_publish_post, time=time(18, 0, tzinfo=TZ), data={'type': 'evening'})
+    job_queue.run_daily(task_prepare_draft, time=time(15, 28, tzinfo=TZ), data={'type': 'evening'})
+    job_queue.run_daily(task_publish_post, time=time(15, 30, tzinfo=TZ), data={'type': 'evening'})
 
     # Test: 18:00 Hazırla -> 19:00 Paylaş (Quiz)
-    job_queue.run_daily(task_prepare_draft, time=time(18, 0, tzinfo=TZ), data={'type': 'quiz'})
-    job_queue.run_daily(task_publish_post, time=time(19, 0, tzinfo=TZ), data={'type': 'quiz'})
+    job_queue.run_daily(task_prepare_draft, time=time(15, 28, tzinfo=TZ), data={'type': 'quiz'})
+    job_queue.run_daily(task_publish_post, time=time(15, 30, tzinfo=TZ), data={'type': 'quiz'})
 
     # Botu çalıştır
     print("Bot çalışıyor...")
