@@ -1,37 +1,77 @@
 [
     {
-        "soru": "Python'da bir listeye eleman eklemek için hangi metod kullanılır?",
+        "soru": "Python-da sanawa element goşmak üçin haýsy usul ulanylýar?",
         "cevaplar": ["push()", "add()", "append()", "insert()"],
         "dogru": "append()"
     },
     {
-        "soru": "Aşağıdakilerden hangisi değiştirilemez (immutable) bir veri tipidir?",
-        "cevaplar": ["List", "Dictionary", "Tuple", "Set"],
-        "dogru": "Tuple"
+        "soru": "Aşakdakylaryň haýsysy üýtgedilip bilinmeýän (immutable) maglumat görnüşidir?",
+        "cevaplar": ["List (Sanaw)", "Dictionary (Sözlük)", "Tuple (Kortej)", "Set (Toplum)"],
+        "dogru": "Tuple (Kortej)"
     },
     {
-        "soru": "Python hangi yıl piyasaya sürülmüştür?",
+        "soru": "Python programmirlemek dili haýsy ýylda döredildi?",
         "cevaplar": ["1989", "1991", "1995", "2000"],
         "dogru": "1991"
     },
     {
-        "soru": "Hangisi bir döngü yapısı DEĞİLDİR?",
-        "cevaplar": ["for", "while", "if", "Hiçbiri"],
+        "soru": "Aşakdakylaryň haýsysy aýlaw (loop) gurluşy DÄLDIR?",
+        "cevaplar": ["for", "while", "if", "Hiç haýsysy"],
         "dogru": "if"
     },
     {
-        "soru": "Python dosya uzantısı nedir?",
+        "soru": "Python faýlynyň giňeltmesi näme?",
         "cevaplar": [".pt", ".py", ".pyt", ".p"],
         "dogru": ".py"
     },
     {
-        "soru": "Mantıksal 'VE' operatörü Python'da nasıl yazılır?",
-        "cevaplar": ["&&", "and", "ampersand", "ve"],
-        "dogru": "and"
+        "soru": "Python-da teswiri (comment) ýazmak üçin haýsy nyşan ulanylýar?",
+        "cevaplar": ["//", "#", "/*", "<!--"],
+        "dogru": "#"
     },
     {
-        "soru": "Bir sözlükten (dictionary) tüm anahtarları almak için hangi metod kullanılır?",
-        "cevaplar": ["get_keys()", "keys()", "all()", "items()"],
-        "dogru": "keys()"
+        "soru": "Setiriň (string) uzynlygyny kesgitlemek üçin haýsy funksiýa ulanylýar?",
+        "cevaplar": ["length()", "size()", "len()", "count()"],
+        "dogru": "len()"
+    },
+    {
+        "soru": "Python-da mantyksal 'ÝA-DA' operatory nähili ýazylýar?",
+        "cevaplar": ["||", "or", "OR", "ýa-da"],
+        "dogru": "or"
+    },
+    {
+        "soru": "Haýsy açar söz funksiýa kesgitlemek üçin ulanylýar?",
+        "cevaplar": ["function", "def", "func", "define"],
+        "dogru": "def"
+    },
+    {
+        "soru": "Python-da üýtgeýjiniň görnüşini anyklamak üçin haýsy funksiýa ulanylýar?",
+        "cevaplar": ["typeof()", "type()", "vartype()", "gettype()"],
+        "dogru": "type()"
+    },
+    {
+        "soru": "Python-da sanawyň (list) içindäki elementleriň sanyny almak üçin haýsy usul ulanylýar?",
+        "cevaplar": ["length()", "size()", "count()", "len()"],
+        "dogru": "len()"
+    },
+    {
+        "soru": "Aşakdakylaryň haýsysy Python-da dogry üýtgeýji ady DÄLDIR?",
+        "cevaplar": ["_ady", "ady1", "1ady", "ady_bir"],
+        "dogru": "1ady"
+    },
+    {
+        "soru": "Python-da setiri (string) kiçi harplara öwürmek üçin haýsy usul ulanylýar?",
+        "cevaplar": ["lowercase()", "lower()", "toLower()", "small()"],
+        "dogru": "lower()"
+    },
+    {
+        "soru": "Range funksiýasy range(1, 10, 2) näçe san öndürýär?",
+        "cevaplar": ["4", "5", "9", "10"],
+        "dogru": "5"
+    },
+    {
+        "soru": "Python-da synag (exception) dolandyrmak üçin haýsy açar söz ulanylýar?",
+        "cevaplar": ["catch", "try", "error", "handle"],
+        "dogru": "try"
     }
 ]
