@@ -115,8 +115,8 @@ def get_main_keyboard(user_id):
 # Admin Menü Klavyesi
 admin_menu = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="📊 İstatistik"), KeyboardButton(text="📢 Toplu Mesaj")],
-        [KeyboardButton(text="🔙 Ana Menüye Dön")]
+        [KeyboardButton(text="📊 Statistika"), KeyboardButton(text="📢 Hemmä SMS")],
+        [KeyboardButton(text="🔙 Asyl Menü")]
     ],
     resize_keyboard=True
 )
@@ -138,8 +138,8 @@ async def cmd_start(message: types.Message):
     kb = get_main_keyboard(user.id)
     
     await message.answer(
-        f"Merhaba {user.first_name}! Hoş geldin.\n"
-        "Aşağıdaki butonları kullanarak işlem yapabilirsin.",
+        f"Salam {user.first_name}! Hoş geldin.\n"
+        "Aşakdaky knopgalary ulanyp bilersiň.",
         reply_markup=kb
     )
 
@@ -151,7 +151,7 @@ async def cmd_start(message: types.Message):
 async def process_quiz(message: types.Message):
     questions = load_questions()
     if not questions:
-        await message.answer("Şu anda soru bulunmuyor.")
+        await message.answer("Şu wagt sorag tapylanok.")
         return
 
     q_index = random.randint(0, len(questions) - 1)
@@ -167,7 +167,7 @@ async def process_quiz(message: types.Message):
     kb = InlineKeyboardMarkup(inline_keyboard=buttons)
     
     await message.answer(
-        f"❓ **Soru:**\n{q_data['soru']}", 
+        f"❓ **Sorag:**\n{q_data['soru']}", 
         reply_markup=kb,
         parse_mode="Markdown"
     )
@@ -180,7 +180,7 @@ async def check_quiz_answer(callback: CallbackQuery):
         
         questions = load_questions()
         if q_index >= len(questions):
-            await callback.answer("Soru zaman aşımına uğradı.", show_alert=True)
+            await callback.answer("Soragda näsazlyk çykdy.", show_alert=True)
             return
 
         correct_answer = questions[q_index]["dogru"]
@@ -188,22 +188,22 @@ async def check_quiz_answer(callback: CallbackQuery):
         
         if user_answer == correct_answer:
             await save_quiz_result(user_id, True)
-            await callback.answer("✅ Doğru cevap!", show_alert=True)
+            await callback.answer("✅ Dogry jogap!", show_alert=True)
             await callback.message.edit_text(
-                f"✅ **Doğru!**\n\nSoru: {questions[q_index]['soru']}\nCevabın: {user_answer}",
+                f"✅ **Dogry!**\n\nSorag: {questions[q_index]['soru']}\nJogabyň: {user_answer}",
                 parse_mode="Markdown"
             )
         else:
             await save_quiz_result(user_id, False)
-            await callback.answer(f"❌ Yanlış. Doğrusu: {correct_answer}", show_alert=True)
+            await callback.answer(f"❌ Ýalňyş. Dogrysy: {correct_answer}", show_alert=True)
             await callback.message.edit_text(
-                f"❌ **Yanlış!**\n\nSoru: {questions[q_index]['soru']}\nDoğru Cevap: {correct_answer}",
+                f"❌ **Ýalňyşş!**\n\nSorag: {questions[q_index]['soru']}\nDogry Jogap: {correct_answer}",
                 parse_mode="Markdown"
             )
             
     except Exception as e:
-        logger.error(f"Quiz hatası: {e}")
-        await callback.answer("Hata oluştu.")
+        logger.error(f"Quiz ýalňyşlygy: {e}")
+        await callback.answer("Ýalňyşlyk bar.")
 
 # --- ADMIN PANELİ ---
 
@@ -214,15 +214,15 @@ async def cmd_admin(message: types.Message):
     if message.from_user.id not in ADMIN_IDS:
         return # Admin değilse sessiz kal
     
-    await message.answer("Admin paneline hoş geldiniz.", reply_markup=admin_menu)
+    await message.answer("Admin panella.", reply_markup=admin_menu)
 
-@router.message(F.text == "🔙 Ana Menüye Dön")
+@router.message(F.text == "🔙 Asyl Menü")
 async def back_to_main(message: types.Message):
     # Kullanıcı yetkisine göre klavyeyi tekrar hesapla
     kb = get_main_keyboard(message.from_user.id)
     await message.answer("Ana menüye dönüldü.", reply_markup=kb)
 
-@router.message(F.text == "📊 İstatistik")
+@router.message(F.text == "📊 Statistika")
 async def admin_stats(message: types.Message):
     if message.from_user.id not in ADMIN_IDS:
         return
@@ -231,22 +231,22 @@ async def admin_stats(message: types.Message):
     ratio = (correct / attempts * 100) if attempts > 0 else 0
     
     stats_msg = (
-        "📊 **Bot İstatistikleri (PostgreSQL)**\n\n"
-        f"👥 Toplam Kullanıcı: `{users}`\n"
+        "📊 **Bot Statistika (PostgreSQL)**\n\n"
+        f"👥 Jemi Ulanyjy: `{users}`\n"
         f"📝 Çözülen Quiz: `{attempts}`\n"
-        f"✅ Doğru Sayısı: `{correct}`\n"
-        f"📈 Başarı Oranı: `%{ratio:.2f}`"
+        f"✅ Dogrylaň Sany: `{correct}`\n"
+        f"📈 Üstünlik Prosent: `%{ratio:.2f}`"
     )
     await message.answer(stats_msg, parse_mode="Markdown")
 
-@router.message(F.text == "📢 Toplu Mesaj")
+@router.message(F.text == "📢 Hemmä SMS")
 async def admin_broadcast_start(message: types.Message, state: FSMContext):
     if message.from_user.id not in ADMIN_IDS:
         return
 
     await message.answer(
-        "Tüm kullanıcılara gönderilecek mesajı yazın (Resim/Dosya olabilir).\n"
-        "İptal için 'iptal' yazın.",
+        "Hemme ulanyjylara ugradyljak sms y ýazyň (Surat/Faýl bolup biler).\n"
+        "Otkaz üçin 'iptal' ýazyň.",
         reply_markup=types.ReplyKeyboardRemove()
     )
     await state.set_state(AdminStates.waiting_for_broadcast_message)
@@ -263,7 +263,7 @@ async def process_broadcast(message: types.Message, state: FSMContext):
     count = 0
     blocked = 0
     
-    status_msg = await message.answer(f"Gönderim başlıyor... ({len(users)} kişi)")
+    status_msg = await message.answer(f"Ugradylyp başlanýar... ({len(users)} kişi)")
     
     for uid in users:
         try:
@@ -274,9 +274,9 @@ async def process_broadcast(message: types.Message, state: FSMContext):
             blocked += 1
             
     await status_msg.edit_text(
-        f"✅ Tamamlandı.\n\n"
-        f"📨 Başarılı: {count}\n"
-        f"🚫 Başarısız: {blocked}"
+        f"✅ Tamamlandy.\n\n"
+        f"📨 Üstünlikli: {count}\n"
+        f"🚫 Bolmady: {blocked}"
     )
     await message.answer("Admin paneli:", reply_markup=admin_menu)
     await state.clear()
