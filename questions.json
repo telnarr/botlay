@@ -1,0 +1,37 @@
+[
+    {
+        "soru": "Python'da bir listeye eleman eklemek için hangi metod kullanılır?",
+        "cevaplar": ["push()", "add()", "append()", "insert()"],
+        "dogru": "append()"
+    },
+    {
+        "soru": "Aşağıdakilerden hangisi değiştirilemez (immutable) bir veri tipidir?",
+        "cevaplar": ["List", "Dictionary", "Tuple", "Set"],
+        "dogru": "Tuple"
+    },
+    {
+        "soru": "Python hangi yıl piyasaya sürülmüştür?",
+        "cevaplar": ["1989", "1991", "1995", "2000"],
+        "dogru": "1991"
+    },
+    {
+        "soru": "Hangisi bir döngü yapısı DEĞİLDİR?",
+        "cevaplar": ["for", "while", "if", "Hiçbiri"],
+        "dogru": "if"
+    },
+    {
+        "soru": "Python dosya uzantısı nedir?",
+        "cevaplar": [".pt", ".py", ".pyt", ".p"],
+        "dogru": ".py"
+    },
+    {
+        "soru": "Mantıksal 'VE' operatörü Python'da nasıl yazılır?",
+        "cevaplar": ["&&", "and", "ampersand", "ve"],
+        "dogru": "and"
+    },
+    {
+        "soru": "Bir sözlükten (dictionary) tüm anahtarları almak için hangi metod kullanılır?",
+        "cevaplar": ["get_keys()", "keys()", "all()", "items()"],
+        "dogru": "keys()"
+    }
+]
